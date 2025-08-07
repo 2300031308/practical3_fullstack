@@ -4,7 +4,6 @@ pipeline {
     tools {
         jdk 'JDK_HOME'
         maven 'MAVEN_HOME'
-        // No nodejs here; assuming it's installed on Mac OS via Homebrew
     }
 
     environment {
@@ -20,34 +19,21 @@ pipeline {
     }
 
     stages {
-
         stage('Clone Repository') {
             steps {
                 git url: 'https://github.com/2300031308/practical3_fullstack.git', branch: 'master'
             }
         }
 
-        stage('Debug NPM Installation') {
-            steps {
-                sh '''
-                    echo "Checking Node.js and npm..."
-                    which node
-                    node -v
-                    which npm
-                    npm -v
-                '''
-            }
-        }
-
         stage('Build Frontend (Vite)') {
             steps {
                 dir("${env.FRONTEND_DIR}") {
-                    sh '''
-                        echo "Installing frontend dependencies..."
-                        npm install
-                        echo "Building frontend..."
-                        npm run build
-                    '''
+                    script {
+                        def nodeHome = tool name: 'NODE_HOME', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
+                        env.PATH = "${nodeHome}/bin:${env.PATH}"
+                    }
+                    sh 'npm install'
+                    sh 'npm run build'
                 }
             }
         }
@@ -55,12 +41,11 @@ pipeline {
         stage('Package Frontend as WAR') {
             steps {
                 dir("${env.FRONTEND_DIR}") {
-                    sh '''
-                        echo "Packaging frontend as WAR..."
+                    sh """
                         mkdir -p frontapp1_war/WEB-INF
                         cp -r dist/* frontapp1_war/
                         jar -cvf ../../${FRONTEND_WAR} -C frontapp1_war .
-                    '''
+                    """
                 }
             }
         }
@@ -68,34 +53,33 @@ pipeline {
         stage('Build Backend (Spring Boot WAR)') {
             steps {
                 dir("${env.BACKEND_DIR}") {
-                    sh '''
-                        echo "Building backend..."
-                        mvn clean package
-                        cp target/*.war ../../${BACKEND_WAR}
-                    '''
+                    sh 'mvn clean package'
+                    sh "cp target/*.war ../../${BACKEND_WAR}"
                 }
             }
         }
 
         stage('Deploy Backend to Tomcat (/springapp1)') {
             steps {
-                sh '''
-                    echo "Deploying backend to Tomcat..."
-                    curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \
-                         --upload-file ${BACKEND_WAR} \
-                         "${TOMCAT_URL}/deploy?path=/springapp1&update=true"
-                '''
+                script {
+                    sh """
+                        curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \\
+                          --upload-file ${BACKEND_WAR} \\
+                          "${TOMCAT_URL}/deploy?path=/springapp1&update=true"
+                    """
+                }
             }
         }
 
         stage('Deploy Frontend to Tomcat (/frontapp1)') {
             steps {
-                sh '''
-                    echo "Deploying frontend to Tomcat..."
-                    curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \
-                         --upload-file ${FRONTEND_WAR} \
-                         "${TOMCAT_URL}/deploy?path=/frontapp1&update=true"
-                '''
+                script {
+                    sh """
+                        curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \\
+                          --upload-file ${FRONTEND_WAR} \\
+                          "${TOMCAT_URL}/deploy?path=/frontapp1&update=true"
+                    """
+                }
             }
         }
     }
@@ -110,3 +94,4 @@ pipeline {
         }
     }
 }
+
