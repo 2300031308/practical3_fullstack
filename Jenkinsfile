@@ -2,9 +2,10 @@ pipeline {
     agent any
 
     tools {
-        jdk 'JDK_HOME'
-        maven 'MAVEN_HOME'
-    }
+    jdk 'JDK_HOME'
+    maven 'MAVEN_HOME'
+    nodejs 'NODE_HOME'  // Add this line
+}
 
     environment {
         BACKEND_DIR = 'crud_backend/crud_backend-main'
@@ -25,18 +26,20 @@ pipeline {
             }
         }
 
-        stage('Build Frontend (Vite)') {
-            steps {
-                dir("${env.FRONTEND_DIR}") {
-                    script {
-                        def nodeHome = tool name: 'NODE_HOME', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
-                        env.PATH = "${nodeHome}/bin:${env.PATH}"
-                    }
-                    sh 'npm install'
-                    sh 'npm run build'
-                }
+       stage('Build Frontend (Vite)') {
+    steps {
+        dir("${env.FRONTEND_DIR}") {
+            script {
+                def nodeHome = tool name: 'NODE_HOME', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
+                env.PATH = "${nodeHome}/bin:${env.PATH}"
+                sh 'node --version'
+                sh 'npm --version'
             }
+            sh 'npm install'
+            sh 'npm run build'
         }
+    }
+}
 
         stage('Package Frontend as WAR') {
             steps {
