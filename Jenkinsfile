@@ -4,6 +4,7 @@ pipeline {
     tools {
         jdk 'JDK_HOME'
         maven 'MAVEN_HOME'
+        nodejs 'NODE_HOME'  // ✅ Add this: Ensure Node.js tool is defined
     }
 
     environment {
@@ -28,12 +29,11 @@ pipeline {
         stage('Build Frontend (Vite)') {
             steps {
                 dir("${env.FRONTEND_DIR}") {
-                    script {
-                        def nodeHome = tool name: 'NODE_HOME', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
-                        env.PATH = "${nodeHome}/bin:${env.PATH}"
+                    // ✅ Ensures Node.js and npm are available in PATH
+                    withEnv(["PATH+NODE=${tool 'NODE_HOME'}/bin"]) {
+                        sh 'npm install'
+                        sh 'npm run build'
                     }
-                    sh 'npm install'
-                    sh 'npm run build'
                 }
             }
         }
@@ -61,25 +61,21 @@ pipeline {
 
         stage('Deploy Backend to Tomcat (/springapp1)') {
             steps {
-                script {
-                    sh """
-                        curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \\
-                          --upload-file ${BACKEND_WAR} \\
-                          "${TOMCAT_URL}/deploy?path=/springapp1&update=true"
-                    """
-                }
+                sh """
+                    curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \\
+                         --upload-file ${BACKEND_WAR} \\
+                         "${TOMCAT_URL}/deploy?path=/springapp1&update=true"
+                """
             }
         }
 
         stage('Deploy Frontend to Tomcat (/frontapp1)') {
             steps {
-                script {
-                    sh """
-                        curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \\
-                          --upload-file ${FRONTEND_WAR} \\
-                          "${TOMCAT_URL}/deploy?path=/frontapp1&update=true"
-                    """
-                }
+                sh """
+                    curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \\
+                         --upload-file ${FRONTEND_WAR} \\
+                         "${TOMCAT_URL}/deploy?path=/frontapp1&update=true"
+                """
             }
         }
     }
