@@ -2,9 +2,8 @@ pipeline {
     agent any
 
     tools {
-        jdk 'JDK_HOME'        // Make sure this matches the name configured in Jenkins
-        maven 'MAVEN_HOME'    // Make sure Maven is configured in Jenkins
-        nodejs 'NODE_HOME'    // Make sure NodeJS is configured in Jenkins
+        jdk 'JDK_HOME'
+        maven 'MAVEN_HOME'
     }
 
     environment {
@@ -31,13 +30,10 @@ pipeline {
                 dir("${env.FRONTEND_DIR}") {
                     script {
                         def nodeHome = tool name: 'NODE_HOME', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
-                        withEnv(["PATH+NODE=${nodeHome}/bin"]) {
-                            sh 'node -v'
-                            sh 'npm -v'
-                            sh 'npm install'
-                            sh 'npm run build'
-                        }
+                        env.PATH = "${nodeHome}/bin:${env.PATH}"
                     }
+                    sh 'npm install'
+                    sh 'npm run build'
                 }
             }
         }
