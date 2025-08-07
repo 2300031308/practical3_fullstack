@@ -46,15 +46,15 @@ const BASE_URL = 'http://13.62.51.44:9090/springapp1';
     setIsEditing(true);
   };
 
- /*
+ 
   const deleteProduct = async (id) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      await axios.delete(`http://localhost:9090/delete/${id}`);
+      await axios.delete(`http://13.62.51.44:9090/springapp1/delete/${id}`);
       alert('Delete successful');
       fetchProducts();
     }
   };
-  */
+  
 
   useEffect(() => {
     fetchProducts();
@@ -167,14 +167,14 @@ const BASE_URL = 'http://13.62.51.44:9090/springapp1';
                 >
                   Edit
                 </button>
-                {/*
+                {
                 <button
                   className="btn btn-danger btn-sm"
                   onClick={() => deleteProduct(p.id)}
                 >
                   Delete
                 </button>
-                */}
+                }
               </td>
             </tr>
           ))}
