@@ -30,10 +30,13 @@ pipeline {
                 dir("${env.FRONTEND_DIR}") {
                     script {
                         def nodeHome = tool name: 'NODE_HOME', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
-                        env.PATH = "${nodeHome}/bin:${env.PATH}"
+                        withEnv(["PATH+NODE=${nodeHome}/bin"]) {
+                            sh 'node -v'   // Optional: to verify Node.js version
+                            sh 'npm -v'    // Optional: to verify npm version
+                            sh 'npm install'
+                            sh 'npm run build'
+                        }
                     }
-                    sh 'npm install'
-                    sh 'npm run build'
                 }
             }
         }
@@ -94,4 +97,3 @@ pipeline {
         }
     }
 }
-
