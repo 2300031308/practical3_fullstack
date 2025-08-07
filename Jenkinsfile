@@ -1,11 +1,7 @@
 pipeline {
     agent any
 
-    tools {
-    jdk 'JDK_HOME'
-    maven 'MAVEN_HOME'
-    nodejs 'NODE_HOME'  // Add this line
-}
+    
 
     environment {
         BACKEND_DIR = 'crud_backend/crud_backend-main'
@@ -15,8 +11,8 @@ pipeline {
         TOMCAT_USER = 'admin'
         TOMCAT_PASS = 'admin'
 
-        BACKEND_WAR = 'springapp1.war'
-        FRONTEND_WAR = 'frontapp1.war'
+         BACKEND_WAR = "${env.BACKEND_DIR}/springapp1.war"
+        FRONTEND_WAR = "${env.FRONTEND_DIR}/frontapp1.war"
     }
 
     stages {
@@ -26,63 +22,54 @@ pipeline {
             }
         }
 
-       stage('Build Frontend (Vite)') {
-    steps {
-        dir("${env.FRONTEND_DIR}") {
-            script {
-                def nodeHome = tool name: 'NODE_HOME', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
-                env.PATH = "${nodeHome}/bin:${env.PATH}"
-                sh 'node --version'
-                sh 'npm --version'
-            }
-            sh 'npm install'
-            sh 'npm run build'
-        }
-    }
-}
-
-        stage('Package Frontend as WAR') {
+       stage('Build React Frontend') {
             steps {
                 dir("${env.FRONTEND_DIR}") {
-                    sh """
-                        mkdir -p frontapp1_war/WEB-INF
-                        cp -r dist/* frontapp1_war/
-                        jar -cvf ../../${FRONTEND_WAR} -C frontapp1_war .
-                    """
+                    sh '''
+                        export PATH=$NODE_HOME:$PATH
+                        npm install
+                        npm run build
+                    '''
                 }
             }
         }
 
-        stage('Build Backend (Spring Boot WAR)') {
+          stage('Package React as WAR') {
+            steps {
+                script {
+                   def warDir = "${env.FRONTEND_DIR}/war_content"
+                    sh "rm -rf ${warDir}"
+                    sh "mkdir -p ${warDir}/META-INF ${warDir}/WEB-INF"
+                    sh "cp -r ${env.FRONTEND_DIR}/dist/* ${warDir}/"
+                    writeFile file: "${warDir}/WEB-INF/web.xml", text: '''
+                        <web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee" version="3.1">
+                            <display-name>ReactApp</display-name>
+                        </web-app>
+                    '''
+                    sh "cd ${warDir} && jar -cvf ../frontapp1.war ."
+                }
+            }
+        }
+
+        stage('Build Spring Boot App') {
             steps {
                 dir("${env.BACKEND_DIR}") {
-                    sh 'mvn clean package'
-                    sh "cp target/*.war ../../${BACKEND_WAR}"
+                    sh '''
+                        mvn clean package
+                        mv target/*.war springapp1.war
+                    '''
                 }
             }
         }
-
-        stage('Deploy Backend to Tomcat (/springapp1)') {
+  stage('Deploy Spring Boot WAR') {
             steps {
-                script {
-                    sh """
-                        curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \\
-                          --upload-file ${BACKEND_WAR} \\
-                          "${TOMCAT_URL}/deploy?path=/springapp1&update=true"
-                    """
-                }
+                sh "curl -u ${TOMCAT_USER}:${TOMCAT_PASS} --upload-file \"${BACKEND_WAR}\" \"${TOMCAT_URL}/deploy?path=/springapp1&update=true\""
             }
         }
 
-        stage('Deploy Frontend to Tomcat (/frontapp1)') {
+        stage('Deploy Frontend WAR') {
             steps {
-                script {
-                    sh """
-                        curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \\
-                          --upload-file ${FRONTEND_WAR} \\
-                          "${TOMCAT_URL}/deploy?path=/frontapp1&update=true"
-                    """
-                }
+                sh "curl -u ${TOMCAT_USER}:${TOMCAT_PASS} --upload-file \"${FRONTEND_WAR}\" \"${TOMCAT_URL}/deploy?path=/frontapp1&update=true\""
             }
         }
     }
@@ -97,3 +84,6 @@ pipeline {
         }
     }
 }
+
+        
+
